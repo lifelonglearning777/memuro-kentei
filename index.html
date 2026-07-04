@@ -3,125 +3,139 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#71b957">
+  <meta name="theme-color" content="#176b52">
+  <meta name="description" content="小学3・4年生向け。5問ずつ楽しく学べる芽室町ご当地クイズです。">
   <title>まちるだいすけと めむろたんけん</title>
-  <link rel="stylesheet" href="css/style.css?v=20260704">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <a class="skip-link" href="#main">メインへ いどう</a>
-  <div class="sky" aria-hidden="true"></div>
+  <a class="skip-link" href="#main">クイズへ すすむ</a>
 
-  <header class="app-header">
-    <button id="homeButton" class="brand" type="button" aria-label="トップに もどる">
-      <span class="brand-mark"><img src="images/machiru-front.png" alt=""></span>
-      <span><small class="brand-kicker">まちるだいすけ と</small><br><strong>めむろたんけん</strong></span>
+  <header class="site-header">
+    <button class="brand" id="brandButton" type="button" aria-label="トップに もどる">
+      <img src="images/machiru-front.svg" alt="">
+      <span><small>まちるだいすけ と</small>めむろたんけん</span>
     </button>
-    <button id="soundButton" class="icon-button" type="button" aria-pressed="true" aria-label="こうかおんを きる">♪</button>
+    <button class="icon-button" id="soundButton" type="button" aria-pressed="false">
+      <span aria-hidden="true">♪</span>
+      <span class="sound-label">おと OFF</span>
+    </button>
   </header>
 
-  <main id="main">
-    <section id="topScreen" class="screen top-screen">
-      <div class="hero">
-        <div class="hero-center">
-          <img class="hero-mascot" src="images/machiru-wave.png" alt="手を上げる まちるだいすけ">
-          <h1>
-            <span class="hero-title-main">めむろ<ruby>検定<rt>けんてい</rt></ruby></span>
-          </h1>
+  <main id="main" class="app-shell" tabindex="-1">
+    <p id="loadingMessage" class="loading-message" role="status">もんだいを よみこんでいます…</p>
+
+    <section id="homeScreen" class="screen" hidden aria-labelledby="homeTitle">
+      <div class="hero-card">
+        <div class="hero-copy">
+          <p class="eyebrow">1かい 5もん・なんどでも ちょうせん</p>
+          <h1 id="homeTitle">めむろ<span>たんけん</span></h1>
+          <p>まちるだいすけと、芽室町の「なぜ？」を見つけよう。</p>
+          <div class="record-row" aria-label="これまでの きろく">
+            <span>🏅 バッジ <strong id="badgeCount">0</strong></span>
+            <span>⭐ せいかい <strong id="correctTotal">0</strong></span>
+          </div>
         </div>
+        <img class="hero-mascot" src="images/machiru-wave.svg" alt="手を上げる まちるだいすけ">
       </div>
 
-      <div id="resumeArea" class="resume-area" hidden>
-        <button id="resumeButton" class="resume-button" type="button">前のつづきから</button>
+      <div id="resumeArea" class="resume-card" hidden>
+        <div>
+          <strong>つづきから できるよ</strong>
+          <span id="resumeText"></span>
+        </div>
+        <button id="resumeButton" class="small-button" type="button">つづける</button>
       </div>
 
-      <div class="level-grid" aria-label="コースをえらぶ">
-        <button class="level-card beginner" type="button" data-level="beginner">
-          <span class="level-stamp">1</span>
-          <span class="level-icon" aria-hidden="true">🗺️</span>
-          <span class="level-name">まちたんけん</span>
-          <span class="level-sub">ビギナー級</span>
-          <span class="level-meta">全25問　▶</span>
-        </button>
-        <button class="level-card intermediate" type="button" data-level="intermediate">
-          <span class="level-stamp">2</span>
-          <span class="level-icon" aria-hidden="true">🚜</span>
-          <span class="level-name">くらし・しごとたんけん</span>
-          <span class="level-sub">中級</span>
-          <span class="level-meta">全25問　▶</span>
-        </button>
-        <button class="level-card advanced" type="button" data-level="advanced">
-          <span class="level-stamp">3</span>
-          <span class="level-icon" aria-hidden="true">🏑</span>
-          <span class="level-name">れきし・文化たんけん</span>
-          <span class="level-sub">上級</span>
-          <span class="level-meta">全25問　▶</span>
-        </button>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">コースを えらぼう</p>
+          <h2>どこを たんけんする？</h2>
+        </div>
+        <p>どのコースも 5もん</p>
       </div>
+      <div id="courseGrid" class="course-grid" aria-label="コースを えらぶ"></div>
 
+      <aside id="teacherPanel" class="teacher-panel" hidden aria-labelledby="teacherTitle">
+        <h2 id="teacherTitle">先生用データ確認</h2>
+        <p id="teacherSummary"></p>
+        <ul id="teacherWarnings"></ul>
+      </aside>
     </section>
 
-    <section id="quizScreen" class="screen quiz-screen" hidden>
-      <div class="progress-row">
-        <button id="quitButton" class="back-button" type="button">‹ やめる</button>
-        <p id="questionCounter" aria-live="polite">第1問 / 25問</p>
-        <p id="scoreChip">★ 0</p>
+    <section id="quizScreen" class="screen" hidden aria-labelledby="questionText">
+      <div class="quiz-toolbar">
+        <button id="quitButton" class="text-button" type="button">← やめる</button>
+        <div class="progress-copy">
+          <span id="questionCounter">1 / 5</span>
+          <span id="scoreChip">⭐ 0</span>
+        </div>
       </div>
-      <div class="progress-track" role="progressbar" aria-label="クイズの進み具合" aria-valuemin="0" aria-valuemax="25" aria-valuenow="1">
-        <div id="progressBar"></div>
+      <div class="progress-track" role="progressbar" aria-label="クイズの進み具合" aria-valuemin="0" aria-valuemax="5" aria-valuenow="1">
+        <span id="progressBar"></span>
       </div>
 
       <article class="question-card">
-        <div class="question-main">
+        <div class="question-heading">
           <div>
-            <p id="levelLabel" class="course-label"></p>
-            <h2 id="questionText"></h2>
+            <p id="courseLabel" class="course-label"></p>
+            <h1 id="questionText"></h1>
           </div>
-          <figure id="imageFrame" class="image-frame">
-            <img id="questionImage" alt="">
-            <figcaption id="imageCredit">写真：地域学習書「めむろ学」</figcaption>
-            <div id="imageCurtain" class="image-curtain" aria-hidden="true">
-              <span>🔍</span>
-              <strong>こたえの あとで<br>しゃしんが ひらくよ</strong>
-            </div>
-          </figure>
+          <button id="readButton" class="read-button" type="button" aria-label="問題と選択肢を音声で読む">
+            <span aria-hidden="true">🔊</span> よむ
+          </button>
         </div>
-        <div id="choiceList" class="choice-list" role="group" aria-label="答えをえらぶ"></div>
+        <div id="choiceList" class="choice-list" aria-label="こたえを えらぶ"></div>
+
+        <section id="feedback" class="feedback" hidden aria-live="polite" aria-atomic="true">
+          <img id="feedbackMascot" src="images/machiru-wave.svg" alt="">
+          <div>
+            <h2 id="feedbackTitle"></h2>
+            <p id="feedbackAnswer" class="feedback-answer"></p>
+            <p id="feedbackText"></p>
+            <details>
+              <summary>しりょう</summary>
+              <span id="sourceText"></span>
+            </details>
+          </div>
+          <button id="nextButton" class="primary-button" type="button">つぎへ →</button>
+        </section>
       </article>
-
-      <div id="feedback" class="feedback" role="status" aria-live="assertive" hidden>
-        <img id="feedbackMascot" class="feedback-mascot" src="images/machiru-wave.png" alt="">
-        <div>
-          <strong id="feedbackTitle"></strong>
-          <p id="feedbackText"></p>
-        </div>
-        <button id="nextButton" class="next-button" type="button">つぎへ ▶</button>
-      </div>
+      <p class="keyboard-help">キーボードは 1・2・3 でこたえ、Enterでつぎへ</p>
     </section>
 
-    <section id="resultScreen" class="screen result-screen" hidden>
-      <div id="resultCard" class="result-card">
-        <div id="resultSeal" class="result-seal" aria-hidden="true">🌽</div>
+    <section id="resultScreen" class="screen" hidden aria-labelledby="resultTitle">
+      <article class="result-card">
+        <img class="result-mascot" src="images/machiru-wave.svg" alt="">
         <p id="resultKicker" class="eyebrow"></p>
-        <h2 id="resultTitle"></h2>
-        <div class="score-display"><strong id="resultScore">0</strong><span>/ 25点</span></div>
+        <h1 id="resultTitle">たんけん おわり！</h1>
+        <div class="score-display" aria-label="今回の得点">
+          <strong id="resultScore">0</strong><span id="resultTotal">/ 5</span>
+        </div>
+        <p id="starRow" class="star-row" aria-hidden="true"></p>
         <p id="resultSummary"></p>
-        <div id="certificate" class="certificate" hidden>
-          <p>認 定 証</p>
-          <strong id="certificateCourse"></strong>
-          <span>芽室町のことをよく学び、全問正解したことを認定します。</span>
-        </div>
+        <div id="discoveryList" class="discovery-list"></div>
         <div class="result-actions">
-          <button id="retryButton" class="primary-button" type="button">もう一度挑戦</button>
-          <button id="reviewButton" class="secondary-button" type="button">まちがい復習</button>
-          <button id="resultHomeButton" class="secondary-button" type="button">トップに戻る</button>
+          <button id="retryButton" class="primary-button" type="button">もう1回 ちょうせん</button>
+          <button id="reviewButton" class="secondary-button" type="button" hidden>まちがい ふくしゅう</button>
+          <button id="resultHomeButton" class="text-button" type="button">コースを えらぶ</button>
         </div>
-      </div>
+      </article>
     </section>
 
+    <section id="errorScreen" class="screen error-card" hidden aria-labelledby="errorTitle">
+      <h1 id="errorTitle">もんだいを よみこめませんでした</h1>
+      <p id="errorMessage">ページを もういちど よみこんでください。</p>
+      <button class="primary-button" type="button" onclick="location.reload()">もういちど よみこむ</button>
+    </section>
   </main>
 
-  <script src="js/furigana.js?v=20260704"></script>
-  <script src="js/data.js?v=20260704"></script>
-  <script src="js/app.js?v=20260704"></script>
+  <footer>
+    <span>芽室町を もっと好きになる 5もんクイズ</span>
+    <a href="?teacher=1">先生用チェック</a>
+  </footer>
+
+  <script src="js/app.js" defer></script>
 </body>
 </html>
