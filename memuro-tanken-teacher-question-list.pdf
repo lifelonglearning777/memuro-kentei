@@ -1,255 +1,142 @@
-/* ============================================================
-   アプリの動きの仕組み（普段は編集しないファイル）
-   ------------------------------------------------------------
-   問題の表示・採点・進捗保存などの処理です。
-   問題を増やす/直すだけなら js/data.js だけで完結します。
-   ============================================================ */
-"use strict";
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#176b52">
+  <meta name="description" content="小学3・4年生向け。5問ずつ楽しく学べる芽室町ご当地クイズです。">
+  <title>まちるだいすけと めむろたんけん</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/styles.css?v=20260705">
+</head>
+<body>
+  <a class="skip-link" href="#main">クイズへ すすむ</a>
 
-const STORAGE_KEY = "memuro-tanken-progress-v1";
-const screens = [...document.querySelectorAll(".screen")];
-const $ = (id) => document.getElementById(id);
+  <header class="site-header">
+    <button class="brand" id="brandButton" type="button" aria-label="トップに もどる">
+      <img src="images/machiru-front.png" alt="">
+      <span><small>まちるだいすけ と</small>めむろたんけん</span>
+    </button>
+    <button class="icon-button" id="soundButton" type="button" aria-pressed="false">
+      <span aria-hidden="true">♪</span>
+      <span class="sound-label">おと OFF</span>
+    </button>
+  </header>
 
-let state = {
-  level: null,
-  queue: [],
-  index: 0,
-  score: 0,
-  wrong: [],
-  reviewMode: false,
-  sound: true,
-  locked: false,
-  currentChoices: []
-};
+  <main id="main" class="app-shell" tabindex="-1">
+    <p id="loadingMessage" class="loading-message" role="status">もんだいを よみこんでいます…</p>
 
-function getLevelQuestions(level) {
-  return questions.filter((item) => item.level === level);
-}
+    <section id="homeScreen" class="screen" hidden aria-labelledby="homeTitle">
+      <div class="hero-card">
+        <div class="hero-copy">
+          <p class="eyebrow">1かい 5もん・なんどでも ちょうせん</p>
+          <h1 id="homeTitle">めむろ<span>たんけん</span></h1>
+          <p>まちるだいすけと、芽室町の「なぜ？」を見つけよう。</p>
+          <div class="record-row" aria-label="これまでの きろく">
+            <span>🏅 バッジ <strong id="badgeCount">0</strong></span>
+            <span>⭐ せいかい <strong id="correctTotal">0</strong></span>
+          </div>
+        </div>
+        <img class="hero-mascot" src="images/machiru-wave.png" alt="手を上げる まちるだいすけ">
+      </div>
 
-// 将来ランダム出題にする場合は、この関数の返り値をシャッフルします。
-function buildQuestionQueue(level) {
-  return getLevelQuestions(level).map((item) => questions.indexOf(item));
-}
+      <div id="resumeArea" class="resume-card" hidden>
+        <div>
+          <strong>つづきから できるよ</strong>
+          <span id="resumeText"></span>
+        </div>
+        <button id="resumeButton" class="small-button" type="button">つづける</button>
+      </div>
 
-function shuffleChoices(item) {
-  const choices = item.choices.map((text, originalIndex) => ({ text, originalIndex }));
-  for (let index = choices.length - 1; index > 0; index -= 1) {
-    const randomIndex = Math.floor(Math.random() * (index + 1));
-    [choices[index], choices[randomIndex]] = [choices[randomIndex], choices[index]];
-  }
-  const unchanged = choices.every((choice, index) => choice.originalIndex === index);
-  if (unchanged) [choices[0], choices[1]] = [choices[1], choices[0]];
-  return choices;
-}
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">コースを えらぼう</p>
+          <h2>どこを たんけんする？</h2>
+        </div>
+        <p>どのコースも 5もん</p>
+      </div>
+      <div id="courseGrid" class="course-grid" aria-label="コースを えらぶ"></div>
 
-function showScreen(id) {
-  screens.forEach((screen) => { screen.hidden = screen.id !== id; });
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
+      <aside id="teacherPanel" class="teacher-panel" hidden aria-labelledby="teacherTitle">
+        <h2 id="teacherTitle">先生用データ確認</h2>
+        <p id="teacherSummary"></p>
+        <ul id="teacherWarnings"></ul>
+      </aside>
+    </section>
 
-function startQuiz(level, queue = buildQuestionQueue(level), reviewMode = false) {
-  state = { ...state, level, queue, index: 0, score: 0, wrong: [], reviewMode, locked: false, currentChoices: [] };
-  showScreen("quizScreen");
-  renderQuestion();
-  saveProgress();
-}
+    <section id="quizScreen" class="screen" hidden aria-labelledby="questionText">
+      <div class="quiz-toolbar">
+        <button id="quitButton" class="text-button" type="button">← やめる</button>
+        <div class="progress-copy">
+          <span id="questionCounter">1 / 5</span>
+          <span id="scoreChip">⭐ 0</span>
+        </div>
+      </div>
+      <div class="progress-track" role="progressbar" aria-label="クイズの進み具合" aria-valuemin="0" aria-valuemax="5" aria-valuenow="1">
+        <span id="progressBar"></span>
+      </div>
 
-function renderQuestion() {
-  const item = questions[state.queue[state.index]];
-  const total = state.queue.length;
-  const displayTotal = state.reviewMode ? total : 25;
-  $("questionCounter").innerHTML = `<ruby>第<rt>だい</rt></ruby>${state.index + 1}<ruby>問<rt>もん</rt></ruby> / ${displayTotal}<ruby>問<rt>もん</rt></ruby>`;
-  $("scoreChip").textContent = `★ ${state.score}`;
-  $("levelLabel").innerHTML = `${kidHtml(levelInfo[state.level].name)}（${kidHtml(levelInfo[state.level].label)}）${state.reviewMode ? `・${kidHtml("復習")}` : ""}`;
-  const questionElement = $("questionText");
-  setKidHtml(questionElement, item.question);
-  questionElement.classList.toggle("is-long", item.question.length >= 22);
-  questionElement.classList.toggle("is-very-long", item.question.length >= 32);
-  $("progressBar").style.width = `${((state.index + 1) / total) * 100}%`;
-  document.querySelector(".progress-track").setAttribute("aria-valuemax", total);
-  document.querySelector(".progress-track").setAttribute("aria-valuenow", state.index + 1);
-  $("feedback").hidden = true;
-  state.locked = false;
-  state.currentChoices = shuffleChoices(item);
+      <article class="question-card">
+        <div class="question-heading">
+          <div>
+            <p id="courseLabel" class="course-label"></p>
+            <h1 id="questionText"></h1>
+          </div>
+          <button id="readButton" class="read-button" type="button" aria-label="問題と選択肢を音声で読む">
+            <span aria-hidden="true">🔊</span> よむ
+          </button>
+        </div>
+        <div id="choiceList" class="choice-list" aria-label="こたえを えらぶ"></div>
 
-  const main = document.querySelector(".question-main");
-  if (item.image) {
-    main.classList.remove("no-image");
-    $("imageFrame").hidden = false;
-    $("imageFrame").classList.add("is-covered");
-    $("imageFrame").classList.remove("is-revealed");
-    $("questionImage").src = `images/${item.image}`;
-    $("questionImage").classList.toggle("map-focus", item.image === "memuro-map.jpg");
-    $("questionImage").alt = "もんだいの てがかりになる しゃしん";
-    setKidHtml($("imageCredit"), imageCredits[item.image] || "写真：地域学習書「めむろ学」");
-    $("questionImage").onerror = () => {
-      $("questionImage").onerror = null;
-      $("questionImage").src = "images/placeholder.jpg";
-      $("questionImage").alt = "めむろちょうの はたけと ひだかさんみゃくの イメージ（しゃしん じゅんびちゅう）";
-      setKidHtml($("imageCredit"), "写真準備中");
-    };
-  } else {
-    main.classList.add("no-image");
-    $("imageFrame").hidden = true;
-    $("imageFrame").classList.remove("is-covered", "is-revealed");
-    $("questionImage").classList.remove("map-focus");
-    $("questionImage").removeAttribute("src");
-  }
+        <section id="feedback" class="feedback" hidden aria-live="polite" aria-atomic="true">
+          <img id="feedbackMascot" src="images/machiru-wave.png" alt="">
+          <div>
+            <h2 id="feedbackTitle"></h2>
+            <p id="feedbackAnswer" class="feedback-answer"></p>
+            <p id="feedbackText"></p>
+            <details>
+              <summary>しりょう</summary>
+              <span id="sourceText"></span>
+            </details>
+          </div>
+          <button id="nextButton" class="primary-button" type="button">つぎへ →</button>
+        </section>
+      </article>
+      <p class="keyboard-help">キーボードは 1・2・3 でこたえ、Enterでつぎへ</p>
+    </section>
 
-  $("choiceList").replaceChildren(...state.currentChoices.map((choice, index) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "choice-button";
-    button.classList.toggle("is-long-choice", choice.text.length >= 14);
-    button.classList.toggle("is-very-long-choice", choice.text.length >= 22);
-    button.innerHTML = `<span class="choice-letter">${String.fromCharCode(65 + index)}</span><span class="choice-text">${kidHtml(choice.text)}</span>`;
-    button.addEventListener("click", () => chooseAnswer(index));
-    return button;
-  }));
-}
+    <section id="resultScreen" class="screen" hidden aria-labelledby="resultTitle">
+      <article class="result-card">
+        <img class="result-mascot" src="images/machiru-wave.png" alt="">
+        <p id="resultKicker" class="eyebrow"></p>
+        <h1 id="resultTitle">たんけん おわり！</h1>
+        <div class="score-display" aria-label="今回の得点">
+          <strong id="resultScore">0</strong><span id="resultTotal">/ 5</span>
+        </div>
+        <p id="starRow" class="star-row" aria-hidden="true"></p>
+        <p id="resultSummary"></p>
+        <div id="discoveryList" class="discovery-list"></div>
+        <div class="result-actions">
+          <button id="retryButton" class="primary-button" type="button">もう1回 ちょうせん</button>
+          <button id="reviewButton" class="secondary-button" type="button" hidden>まちがい ふくしゅう</button>
+          <button id="resultHomeButton" class="text-button" type="button">コースを えらぶ</button>
+        </div>
+      </article>
+    </section>
 
-function chooseAnswer(selected) {
-  if (state.locked) return;
-  state.locked = true;
-  const item = questions[state.queue[state.index]];
-  const correct = state.currentChoices[selected].originalIndex === item.answer;
-  const buttons = [...document.querySelectorAll(".choice-button")];
-  buttons.forEach((button, index) => {
-    button.disabled = true;
-    if (state.currentChoices[index].originalIndex === item.answer) button.classList.add("correct");
-    if (index === selected && !correct) button.classList.add("wrong");
-  });
-  if (item.image) {
-    $("imageFrame").classList.remove("is-covered");
-    $("imageFrame").classList.add("is-revealed");
-  }
+    <section id="errorScreen" class="screen error-card" hidden aria-labelledby="errorTitle">
+      <h1 id="errorTitle">もんだいを よみこめませんでした</h1>
+      <p id="errorMessage">ページを もういちど よみこんでください。</p>
+      <button class="primary-button" type="button" onclick="location.reload()">もういちど よみこむ</button>
+    </section>
+  </main>
 
-  if (correct) {
-    state.score += 1;
-    if ($("feedbackMascot")) $("feedbackMascot").src = "images/machiru-wave.png";
-    setKidHtml($("feedbackTitle"), ["やったね！", "すごい！", "いい調子！"][state.index % 3]);
-    playTone(660);
-  } else {
-    state.wrong.push(state.queue[state.index]);
-    if ($("feedbackMascot")) $("feedbackMascot").src = "images/machiru-front.png";
-    setKidHtml($("feedbackTitle"), ["次はいけるよ！", "だいじょうぶ、発見できたね！"][state.index % 2]);
-    playTone(330);
-  }
-  $("scoreChip").textContent = `★ ${state.score}`;
-  $("feedbackText").innerHTML = `${kidHtml(item.explanation)}（${kidHtml(item.source)}）`;
-  $("feedback").hidden = false;
-  const isLast = state.index + 1 >= state.queue.length;
-  setKidHtml($("nextButton"), isLast ? "けっかを みる ▶" : "つぎへ ▶");
-  $("nextButton").focus();
-}
+  <footer>
+    <span>芽室町を もっと好きになる 5もんクイズ</span>
+    <a href="?teacher=1">先生用チェック</a>
+  </footer>
 
-function nextQuestion() {
-  state.index += 1;
-  if (state.index < state.queue.length) {
-    renderQuestion();
-    saveProgress();
-  } else {
-    showResult();
-  }
-}
-
-function showResult() {
-  localStorage.removeItem(STORAGE_KEY);
-  updateResumeButton();
-  showScreen("resultScreen");
-  const total = state.queue.length;
-  const passed = !state.reviewMode && total === 25 && state.score === 25;
-  $("resultCard").classList.toggle("fail", !passed);
-  $("resultScore").textContent = state.score;
-  document.querySelector(".score-display span").innerHTML = `/ ${total}<ruby>点<rt>てん</rt></ruby>`;
-  $("resultKicker").innerHTML = `${kidHtml(levelInfo[state.level].name)}（${kidHtml(levelInfo[state.level].label)}）`;
-  setKidHtml($("resultTitle"), passed ? "たんけんクリア！" : state.reviewMode ? "復習できたね！" : "もう一回チャレンジ！");
-  $("resultSummary").textContent = passed
-    ? "25もん すべてせいかい！ めむろちょうの たんけんめいじんです。"
-    : `${total}もんちゅう ${state.score}もんせいかい。まちがいも、あたらしいはっけんへのいっぽだよ。`;
-  $("certificate").hidden = !passed;
-  $("certificateCourse").innerHTML = `${kidHtml(levelInfo[state.level].name)} ${kidHtml(levelInfo[state.level].label)}`;
-  $("reviewButton").hidden = state.wrong.length === 0;
-  $("reviewButton").textContent = `まちがいふくしゅう（${state.wrong.length}もん）`;
-  playTone(passed ? 880 : 440);
-}
-
-function saveProgress() {
-  if (!state.level || state.reviewMode) return;
-  const saved = {
-    level: state.level, queue: state.queue, index: state.index,
-    score: state.score, wrong: state.wrong
-  };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-  updateResumeButton();
-}
-
-function loadProgress() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (!saved || !levelInfo[saved.level] || saved.index >= saved.queue.length) return;
-    state = { ...state, ...saved, reviewMode: false, locked: false };
-    showScreen("quizScreen");
-    renderQuestion();
-  } catch {
-    localStorage.removeItem(STORAGE_KEY);
-  }
-}
-
-function updateResumeButton() {
-  let saved = null;
-  try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { /* 破損時は非表示 */ }
-  $("resumeArea").hidden = !saved;
-  if (saved && levelInfo[saved.level]) {
-    $("resumeButton").innerHTML = `${kidHtml(levelInfo[saved.level].name)} <ruby>第<rt>だい</rt></ruby>${saved.index + 1}<ruby>問<rt>もん</rt></ruby>から`;
-  }
-}
-
-function goHome() {
-  showScreen("topScreen");
-  updateResumeButton();
-}
-
-function confirmQuit() {
-  if (window.confirm("ここまでの きろくを のこして、トップに もどりますか？")) goHome();
-}
-
-function playTone(frequency) {
-  if (!state.sound || !window.AudioContext) return;
-  const context = new AudioContext();
-  const oscillator = context.createOscillator();
-  const gain = context.createGain();
-  oscillator.frequency.value = frequency;
-  gain.gain.setValueAtTime(0.05, context.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.12);
-  oscillator.connect(gain).connect(context.destination);
-  oscillator.start();
-  oscillator.stop(context.currentTime + 0.12);
-}
-
-document.querySelectorAll(".level-card").forEach((button) => {
-  button.addEventListener("click", () => {
-    localStorage.removeItem(STORAGE_KEY);
-    startQuiz(button.dataset.level);
-  });
-});
-$("resumeButton").addEventListener("click", loadProgress);
-$("quitButton").addEventListener("click", confirmQuit);
-$("homeButton").addEventListener("click", goHome);
-$("resultHomeButton").addEventListener("click", goHome);
-$("retryButton").addEventListener("click", () => startQuiz(state.level));
-$("reviewButton").addEventListener("click", () => startQuiz(state.level, [...new Set(state.wrong)], true));
-$("nextButton").addEventListener("click", () => {
-  if ($("feedback").hidden) return;
-  $("feedback").hidden = true;
-  nextQuestion();
-});
-$("soundButton").addEventListener("click", () => {
-  state.sound = !state.sound;
-  $("soundButton").setAttribute("aria-pressed", String(state.sound));
-  $("soundButton").setAttribute("aria-label", state.sound ? "こうかおんを きる" : "こうかおんを つける");
-  $("soundButton").textContent = state.sound ? "♪" : "×";
-});
-
-updateResumeButton();
-applyKidText();
+  <script src="js/furigana.js?v=20260705"></script>
+    <script src="js/app.js?v=20260705" defer></script>
+</body>
+</html>
