@@ -89,7 +89,7 @@ main { min-height: calc(100vh - 64px); display: grid; place-items: center; paddi
   box-shadow: var(--shadow);
   background:
     linear-gradient(110deg, rgba(255,255,255,.06), rgba(20,67,47,.24)),
-    url("images/memuro-aerial.jpg") center 45% / cover no-repeat;
+    url("memuro-aerial.jpg") center 45% / cover no-repeat;
 }
 .hero::after {
   content: none;
@@ -362,7 +362,7 @@ rt { font-size: .5em; font-weight: 700; color: #315f44; }
 
   <header class="app-header">
     <button id="homeButton" class="brand" type="button" aria-label="トップに もどる">
-      <span class="brand-mark"><img src="images/machiru-front.png" alt=""></span>
+      <span class="brand-mark"><img src="machiru-front.png" alt=""></span>
       <span><small class="brand-kicker">まちるだいすけ と</small><br><strong>めむろたんけん</strong></span>
     </button>
     <button id="soundButton" class="icon-button" type="button" aria-pressed="true" aria-label="こうかおんを きる">♪</button>
@@ -372,7 +372,7 @@ rt { font-size: .5em; font-weight: 700; color: #315f44; }
     <section id="topScreen" class="screen top-screen">
       <div class="hero">
         <div class="hero-center">
-          <img class="hero-mascot" src="images/machiru-wave.png" alt="手を上げる まちるだいすけ">
+          <img class="hero-mascot" src="machiru-wave.png" alt="手を上げる まちるだいすけ">
           <h1>
             <span class="hero-title-main">めむろ<ruby>検定<rt>けんてい</rt></ruby></span>
           </h1>
@@ -438,7 +438,7 @@ rt { font-size: .5em; font-weight: 700; color: #315f44; }
       </article>
 
       <div id="feedback" class="feedback" role="status" aria-live="assertive" hidden>
-        <img id="feedbackMascot" class="feedback-mascot" src="images/machiru-wave.png" alt="">
+        <img id="feedbackMascot" class="feedback-mascot" src="machiru-wave.png" alt="">
         <div>
           <strong id="feedbackTitle"></strong>
           <p id="feedbackText"></p>
@@ -699,13 +699,13 @@ function renderQuestion() {
     $("imageFrame").hidden = false;
     $("imageFrame").classList.add("is-covered");
     $("imageFrame").classList.remove("is-revealed");
-    $("questionImage").src = `images/${item.image}`;
+    $("questionImage").src = `${item.image}`;
     $("questionImage").classList.toggle("map-focus", item.image === "memuro-map.jpg");
     $("questionImage").alt = "もんだいの てがかりになる しゃしん";
     setKidHtml($("imageCredit"), imageCredits[item.image] || "写真：地域学習書「めむろ学」");
     $("questionImage").onerror = () => {
       $("questionImage").onerror = null;
-      $("questionImage").src = "images/placeholder.jpg";
+      $("questionImage").src = "placeholder.jpg";
       $("questionImage").alt = "めむろちょうの はたけと ひだかさんみゃくの イメージ（しゃしん じゅんびちゅう）";
       setKidHtml($("imageCredit"), "写真準備中");
     };
@@ -747,12 +747,12 @@ function chooseAnswer(selected) {
 
   if (correct) {
     state.score += 1;
-    if ($("feedbackMascot")) $("feedbackMascot").src = "images/machiru-wave.png";
+    if ($("feedbackMascot")) $("feedbackMascot").src = "machiru-wave.png";
     setKidHtml($("feedbackTitle"), ["やったね！", "すごい！", "いい調子！"][state.index % 3]);
     playTone(660);
   } else {
     state.wrong.push(state.queue[state.index]);
-    if ($("feedbackMascot")) $("feedbackMascot").src = "images/machiru-front.png";
+    if ($("feedbackMascot")) $("feedbackMascot").src = "machiru-front.png";
     setKidHtml($("feedbackTitle"), ["次はいけるよ！", "だいじょうぶ、発見できたね！"][state.index % 2]);
     playTone(330);
   }
